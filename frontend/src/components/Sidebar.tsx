@@ -93,6 +93,23 @@ export default function Sidebar() {
             Unit Directory
           </NavLink>
         )}
+        
+        <div className="pt-4 mt-4 border-t border-border">
+          <a 
+            href="https://phishing-educator.vercel.app/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-between px-5 py-3 rounded-xl bg-gradient-to-r from-primary/20 to-violet-500/20 text-primary border border-primary/30 shadow-[0_0_15px_rgba(var(--primary-rgb),0.2)] hover:shadow-[0_0_25px_rgba(var(--primary-rgb),0.4)] hover:scale-[1.02] transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 bg-primary/20 rounded-lg group-hover:bg-primary/30 transition-colors">
+                <ShieldAlert className="w-4 h-4 animate-pulse" />
+              </div>
+              <span className="font-bold uppercase tracking-widest text-[10px]">Learning Hub</span>
+            </div>
+            <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+          </a>
+        </div>
       </nav>
 
       <div className="mt-auto space-y-4">

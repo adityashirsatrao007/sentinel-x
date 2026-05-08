@@ -6,7 +6,6 @@ import {
   Lock, 
   Server, 
   ChevronRight, 
-  Terminal, 
   Cpu, 
   Globe,
   Database
@@ -38,6 +37,15 @@ const Landing = () => {
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
             <a href="#platform" className="hover:text-foreground transition-colors">Platform</a>
             <a href="#security" className="hover:text-foreground transition-colors">Security</a>
+            <a 
+              href="https://phishing-educator.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 font-bold flex items-center gap-1 transition-colors relative group"
+            >
+              Learning
+              <div className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+            </a>
           </div>
           <div className="flex items-center gap-4">
             <button 
@@ -48,7 +56,7 @@ const Landing = () => {
             </button>
             <button 
               onClick={() => navigate('/dashboard')}
-              className="text-sm font-medium bg-foreground text-background px-4 py-2 rounded-md hover:bg-muted transition-colors flex items-center gap-2"
+              className="text-sm font-medium bg-foreground text-background px-4 py-2 rounded-md hover:scale-105 hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all flex items-center gap-2"
             >
               Dashboard <ChevronRight className="w-4 h-4" />
             </button>
@@ -58,37 +66,51 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        {/* Abstract Background Grid (Not a gradient blob, but a structural grid) */}
+        {/* Abstract Background Grid */}
         <div className="absolute inset-0 z-0 opacity-[0.03]" 
              style={{ backgroundImage: 'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)', backgroundSize: '4rem 4rem' }}>
         </div>
         
         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-8">
-              <Activity className="w-3 h-3" />
-              <span>v2.0 Now Available</span>
+          <div className="text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-8 shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)]">
+              <Activity className="w-3 h-3 animate-pulse" />
+              <span>v2.0 Now Available with AI-Powered Threat Hunting</span>
             </div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
-              Enterprise-Grade <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-foreground to-muted-foreground">Threat Detection.</span>
+            <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]">
+              The Next Evolution in <br className="hidden md:block"/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-400 to-primary">Adaptive Cybersecurity.</span>
             </h1>
-            <p className="text-lg lg:text-xl text-muted-foreground mb-10 leading-relaxed">
-              Advanced monitoring, real-time analytics, and automated response. 
-              Secure your infrastructure with precision—no compromises, no noise.
+            <p className="text-lg lg:text-xl text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
+              SentinelX provides real-time, AI-driven monitoring and automated incident response. 
+              Protect your infrastructure from sophisticated phishing, malware, and zero-day threats before they breach your perimeter.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <button 
                 onClick={() => navigate('/dashboard')}
-                className="w-full sm:w-auto px-8 py-3.5 rounded-md bg-primary text-white font-medium hover:bg-primary/90 transition-all shadow-[0_0_20px_-5px_rgba(59,130,246,0.5)] flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-md bg-primary text-white font-bold hover:bg-primary/90 hover:scale-105 transition-all shadow-[0_0_25px_-5px_rgba(59,130,246,0.6)] flex items-center justify-center gap-2"
               >
                 Start Monitoring <ChevronRight className="w-4 h-4" />
               </button>
-              <button 
-                className="w-full sm:w-auto px-8 py-3.5 rounded-md bg-card border border-border text-foreground font-medium hover:bg-border/50 transition-colors flex items-center justify-center gap-2"
+              <a 
+                href="https://phishing-educator.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full sm:w-auto px-8 py-3.5 rounded-md bg-card border border-border text-foreground font-bold hover:bg-muted hover:border-primary/50 transition-colors flex items-center justify-center gap-2 group"
               >
-                <Terminal className="w-4 h-4" /> View Documentation
-              </button>
+                <Globe className="w-4 h-4 text-primary group-hover:animate-spin-slow" /> Interactive Learning
+              </a>
+            </div>
+            
+            {/* Trust Indicators */}
+            <div className="mt-16 pt-10 border-t border-border/50">
+              <p className="text-sm font-semibold text-muted-foreground uppercase tracking-widest mb-6">Trusted by Forward-Thinking Security Teams</p>
+              <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                <div className="flex items-center gap-2 font-bold text-xl"><Shield className="w-6 h-6" /> CyberCore</div>
+                <div className="flex items-center gap-2 font-bold text-xl"><Server className="w-6 h-6" /> DataVault</div>
+                <div className="flex items-center gap-2 font-bold text-xl"><Cpu className="w-6 h-6" /> QuantumSec</div>
+                <div className="flex items-center gap-2 font-bold text-xl"><Lock className="w-6 h-6" /> Aegis Net</div>
+              </div>
             </div>
           </div>
         </div>

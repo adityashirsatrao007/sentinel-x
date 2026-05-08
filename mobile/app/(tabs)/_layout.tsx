@@ -72,6 +72,27 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="learning"
+        options={{
+          title: 'Learning',
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.highlightTab}>
+              <TabIcon icon="🎓" focused={focused} />
+            </View>
+          ),
+        }}
+        listeners={{
+          tabPress: (e) => {
+            // Prevent default navigation
+            e.preventDefault();
+            // Open the external learning portal
+            import('react-native').then(({ Linking }) => {
+              Linking.openURL('https://phishing-educator.vercel.app/');
+            });
+          },
+        }}
+      />
     </Tabs>
   );
 }
@@ -124,5 +145,16 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 9,
     fontWeight: '700',
+  },
+  highlightTab: {
+    backgroundColor: 'rgba(0, 212, 255, 0.15)',
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 212, 255, 0.3)',
+    shadowColor: '#00D4FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
   },
 });

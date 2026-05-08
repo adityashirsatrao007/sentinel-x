@@ -7,8 +7,9 @@ GET  /auth/me        — Return current user profile
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from app.core.limiter import limiter
 
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.config import settings
@@ -36,7 +37,8 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
 )
-def register(request: UserRegisterRequest, db: Session = Depends(get_db)) -> UserResponse:
+@limiter.limit("5/hour")
+def register(request: UserRegisterRequest, fastapi_request: Request, db: Session = Depends(get_db)) -> UserResponse:
     """Create a new user with hashed password. Fails if email already exists."""
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
@@ -109,7 +111,8 @@ def invite_user(
     response_model=TokenResponse,
     summary="Authenticate and receive a JWT access token",
 )
-def login(request: UserLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+@limiter.limit("10/minute")
+def login(request: UserLoginRequest, fastapi_request: Request, db: Session = Depends(get_db)) -> TokenResponse:
     """Validate credentials and issue a JWT access token."""
     user = db.query(User).filter(User.email == request.email).first()
 

@@ -85,6 +85,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           stats['total_threats'] = responseData['total'] ?? (threats.length * 7);
           stats['blocked_today'] = threats.where((t) => (t['threat']?['risk_score'] ?? 0) > 5).length + 20;
           stats['network_speed'] = '${(10 + threats.length).toStringAsFixed(1)} MB/s';
+          
+          // Determine if we are under attack (any threat > 80%)
+          bool hasCriticalThreat = threats.any((t) => ((t['threat']?['risk_score'] ?? 0) * 10) >= 80);
+          stats['is_high_alert'] = hasCriticalThreat;
+          
           _isLoading = false;
         });
       }
@@ -170,7 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: stats['blocked_today'] > 25 
+          colors: stats['is_high_alert'] == true
               ? [const Color(0xFFEF4444), const Color(0xFFB91C1C)] 
               : [const Color(0xFF3B82F6), const Color(0xFF2563EB)],
           begin: Alignment.topLeft,
@@ -179,7 +184,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: (stats['blocked_today'] > 25 ? Colors.red : Colors.blue).withOpacity(0.4),
+            color: (stats['is_high_alert'] == true ? Colors.red : Colors.blue).withOpacity(0.4),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -188,7 +193,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Row(
         children: [
           Icon(
-            stats['blocked_today'] > 25 ? Icons.gpp_maybe : Icons.gpp_good, 
+            stats['is_high_alert'] == true ? Icons.gpp_maybe : Icons.gpp_good, 
             size: 60, 
             color: Colors.white
           ),
@@ -198,7 +203,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  stats['blocked_today'] > 25 ? 'High Alert' : 'System Secure',
+                  stats['is_high_alert'] == true ? 'CRITICAL ALERT' : 'System Secure',
                   style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 Text(
@@ -229,8 +234,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildThreatItem(dynamic t) {
     final threatData = t['threat'] ?? {};
-    final double risk = (threatData['risk_score'] ?? 0.0).toDouble();
-    final Color color = risk > 70 ? Colors.redAccent : (risk > 40 ? Colors.orangeAccent : Colors.greenAccent);
+    final double riskRaw = (threatData['risk_score'] ?? 0.0).toDouble();
+    final int riskPercentage = (riskRaw * 10).toInt();
+    final Color color = riskPercentage >= 70 ? Colors.redAccent : (riskPercentage >= 40 ? Colors.orangeAccent : Colors.greenAccent);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -264,7 +270,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '${(risk * 10).toInt()}%',
+              '$riskPercentage%',
               style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
             ),
             const Text('RISK', style: TextStyle(color: Colors.grey, fontSize: 10)),

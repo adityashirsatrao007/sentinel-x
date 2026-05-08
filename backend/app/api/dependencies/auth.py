@@ -12,7 +12,7 @@ import uuid
 from functools import lru_cache
 from typing import Optional, List
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from sqlalchemy.orm import Session
@@ -38,19 +38,23 @@ def _decode_token_cached(token: str) -> Optional[dict]:
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(HTTPBearer(auto_error=False)),
+    token_query: Optional[str] = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ) -> User:
     """
-    Extract and validate JWT from Authorization: Bearer header.
+    Extract and validate JWT from Authorization: Bearer header or ?token= query param.
     Returns the authenticated User ORM object.
-
-    The JWT decode step is LRU-cached to avoid repeating HMAC verification
-    on every single request.  Only the DB lookup (by user_id) is done live,
-    but expire_on_commit=False in SessionLocal means SQLAlchemy won't
-    issue extra SELECT statements after yielding the object.
     """
-    token = credentials.credentials
+    token = credentials.credentials if credentials else token_query
+
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     payload = _decode_token_cached(token)
 
     if payload is None:

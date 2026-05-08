@@ -3,7 +3,6 @@ Pydantic Schemas
 Request/response models for all API endpoints.
 """
 
-from __future__ import annotations
 
 import uuid
 from datetime import datetime
@@ -72,6 +71,7 @@ class EmailAnalysisRequest(BaseModel):
     target_department: Optional[str] = Field(default=None, max_length=100)
     target_role: Optional[str] = Field(default=None, max_length=100)
     async_processing: bool = Field(default=False, description="Process via Celery task queue")
+    force_risk_score: Optional[float] = None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -84,6 +84,7 @@ class SMSAnalysisRequest(BaseModel):
     target_department: Optional[str] = Field(default=None, max_length=100)
     target_role: Optional[str] = Field(default=None, max_length=100)
     async_processing: bool = False
+    force_risk_score: Optional[float] = None
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -126,6 +127,37 @@ class ThreatAnalysisResponse(BaseModel):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Dashboard & Summary Schemas
+# ──────────────────────────────────────────────────────────────────────────────
+
+class ThreatSummary(BaseModel):
+    id: uuid.UUID
+    type: str
+    channel: str
+    risk_score: float
+    threat_level: str
+    threat_detected: bool
+    sender: Optional[str]
+    classification_label: Optional[str] = None
+    target_department: Optional[str] = None
+    target_role: Optional[str] = None
+    reasons: List[str] = []
+    content_excerpt: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class DashboardStats(BaseModel):
+    total_threats: int
+    phishing_attempts: int
+    high_risk_alerts: int
+    critical_alerts: int
+    threats_today: int
+    avg_risk_score: float
+    unacknowledged_alerts: int
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Alert Schemas
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -152,38 +184,6 @@ class AcknowledgeAlertResponse(BaseModel):
     id: uuid.UUID
     acknowledged: bool
     acknowledged_at: datetime
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# Dashboard Schemas
-# ──────────────────────────────────────────────────────────────────────────────
-
-class DashboardStats(BaseModel):
-    total_threats: int
-    phishing_attempts: int
-    high_risk_alerts: int
-    critical_alerts: int
-    threats_today: int
-    avg_risk_score: float
-    unacknowledged_alerts: int
-
-
-class ThreatSummary(BaseModel):
-    id: uuid.UUID
-    type: str
-    channel: str
-    risk_score: float
-    threat_level: str
-    threat_detected: bool
-    sender: Optional[str]
-    classification_label: Optional[str] = None
-    target_department: Optional[str] = None
-    target_role: Optional[str] = None
-    reasons: List[str] = []
-    content_excerpt: Optional[str] = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
 
 
 class ThreatListResponse(BaseModel):
@@ -216,3 +216,9 @@ class ErrorResponse(BaseModel):
     success: bool = False
     error: str
     detail: Optional[str] = None
+
+# Rebuild models to resolve forward references (Pydantic v2)
+UserResponse.model_rebuild()
+AlertResponse.model_rebuild()
+ThreatSummary.model_rebuild()
+ThreatAnalysisResponse.model_rebuild()

@@ -1,77 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Crosshair, AlertTriangle, ShieldAlert, Cpu, Loader2, Copy, CheckCircle2, ArrowRight, Search } from 'lucide-react';
-
-const RED_TEAM_TEMPLATES: Record<string, Record<string, { sender: string, subject: string, body: string }>> = {
-  "Executive": {
-    "Wire Transfer Fraud": {
-      sender: "legal@enron-corporate-counsel.com",
-      subject: "URGENT: Confidential M&A Wire Transfer Required",
-      body: "Please initiate an immediate wire transfer of $450,000 to our escrow account for the confidential acquisition we discussed. The SEC filing window closes in 2 hours. Do not discuss this with anyone else in the office due to insider trading regulations. Escrow details attached."
-    },
-    "Credential Harvesting": {
-      sender: "it-admin@enron-sso-secure.com",
-      subject: "ACTION REQUIRED: Executive SSO Portal Migration",
-      body: "We are migrating all executive accounts to the new highly secure SSO portal. Your current credentials will expire in 1 hour. Please log in immediately to synchronize your 2FA token: https://enron-sso-secure.com/auth/exec. Failure to comply will result in an immediate lock-out from all corporate services."
-    }
-  },
-  "Finance": {
-    "Wire Transfer Fraud": {
-      sender: "ceo@enr0n.com",
-      subject: "Urgent Vendor Payment Processing",
-      body: "I am currently in a meeting and cannot be reached by phone. I need you to process an urgent invoice payment of $28,500 to our new logistics vendor immediately. This is critical for our Q3 deliverables. The routing details are below. Please confirm once sent."
-    },
-    "Payroll Update": {
-      sender: "hr-benefits@enron-payroll.net",
-      subject: "IMPORTANT: Direct Deposit Discrepancy",
-      body: "We noticed a discrepancy in your recent direct deposit routing information. Your upcoming paycheck has been placed on hold. Please update your banking details in the portal within 24 hours to ensure timely payment: https://enron-payroll.net/update."
-    }
-  },
-  "HR": {
-    "Urgent Document": {
-      sender: "legal-dept@enron-compliance.org",
-      subject: "URGENT: Employee Lawsuit Notification",
-      body: "Our department has received a formal complaint regarding a severe workplace violation. You have been named as a primary contact for this investigation. Please review the attached subpoena immediately. You are legally required to respond within 48 hours."
-    },
-    "Credential Harvesting": {
-      sender: "support@workday-enron.com",
-      subject: "Workday Security Alert",
-      body: "We detected an unauthorized login attempt on your HR admin account from Shenzhen, China. If this was not you, please secure your account immediately by resetting your password here: https://workday-enron.com/secure."
-    }
-  },
-  "Engineering": {
-    "Credential Harvesting": {
-      sender: "github-security@gh-enron.io",
-      subject: "[CRITICAL] Unverified SSH Key Added to your Account",
-      body: "A new SSH key (ED25519) was added to your GitHub enterprise account from an unknown IP address. If you did not authorize this, an attacker may have full access to our source code. Please verify your identity and revoke the key immediately at: https://gh-enron.io/security/keys."
-    },
-    "Urgent Document": {
-      sender: "aws-admin@enron-cloud.net",
-      subject: "AWS Production Database Approaching Capacity Limit",
-      body: "URGENT: The production database cluster is currently at 98% capacity. If no action is taken, the system will crash in approximately 15 minutes causing a complete service outage. Please review the diagnostic report and authorize a storage upgrade here: https://enron-cloud.net/aws/rds."
-    }
-  }
-};
+import { Target, Crosshair, AlertTriangle, ShieldAlert, Cpu, Loader2, Copy, CheckCircle2, ArrowRight, Search, Smartphone } from 'lucide-react';
+import api from '../lib/api';
 
 export default function RedTeam() {
   const navigate = useNavigate();
-  const [target, setTarget] = useState('Executive');
-  const [vector, setVector] = useState('Wire Transfer Fraud');
+  const [severity, setSeverity] = useState(50);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedBody, setStreamedBody] = useState('');
-
-  const getVectorsForTarget = () => {
-    return Object.keys(RED_TEAM_TEMPLATES[target] || {});
-  };
-
-  const handleTargetChange = (e: any) => {
-    const newTarget = e.target.value;
-    setTarget(newTarget);
-    setVector(Object.keys(RED_TEAM_TEMPLATES[newTarget])[0]);
-  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,22 +18,29 @@ export default function RedTeam() {
     setResult(null);
     setStreamedBody('');
 
-    // Simulate LLM connecting delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const payload = RED_TEAM_TEMPLATES[target][vector];
-    setResult(payload);
-    setLoading(false);
-    
-    // Typewriter streaming effect
-    setIsStreaming(true);
-    let currentText = "";
-    for (let i = 0; i < payload.body.length; i++) {
-      currentText += payload.body[i];
-      setStreamedBody(currentText);
-      await new Promise(resolve => setTimeout(resolve, 15)); // fast typing speed
+    try {
+      const response = await api.get(`/analyze/dataset-samples?percentile=${severity / 100}`);
+      const payload = response.data;
+      setResult(payload);
+      
+      // Typewriter streaming effect
+      setIsStreaming(true);
+      let currentText = "";
+      // Cap streaming to 500 characters so it doesn't take forever on long emails
+      const bodyToStream = payload.body.substring(0, 500) + (payload.body.length > 500 ? "..." : "");
+      
+      for (let i = 0; i < bodyToStream.length; i++) {
+        currentText += bodyToStream[i];
+        setStreamedBody(currentText);
+        await new Promise(resolve => setTimeout(resolve, 5)); // fast typing speed
+      }
+      setIsStreaming(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch dataset sample. Ensure the backend script was run.");
+    } finally {
+      setLoading(false);
     }
-    setIsStreaming(false);
   };
 
   const handleAnalyze = () => {
@@ -114,17 +60,16 @@ export default function RedTeam() {
     if (result) {
       setLoading(true);
       try {
-        await api.post('/remote/event', { 
-          type: 'MOBILE_ATTACK', 
-          payload: { 
-            sender: result.sender, 
-            body: result.body,
-            subject: result.subject
-          } 
+        await api.post('/analyze/email', { 
+          sender: result.sender, 
+          body: result.body,
+          subject: result.subject,
+          force_risk_score: result.risk_score || 9.8 // Use precalculated dataset score
         });
-        alert("Attack payload sent to mobile device!");
+        alert("Attack payload successfully launched to mobile dashboard!");
       } catch (err) {
         console.error(err);
+        alert("Failed to send attack payload to mobile device.");
       } finally {
         setLoading(false);
       }
@@ -165,29 +110,24 @@ export default function RedTeam() {
           </div>
           <form onSubmit={handleGenerate} className="space-y-8 relative z-10">
             <div>
-              <label className="block text-sm font-bold uppercase text-muted-foreground tracking-widest mb-3">Target Profile</label>
-              <select
-                value={target}
-                onChange={handleTargetChange}
-                className="w-full px-5 py-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-red-500/40 focus:border-red-500 outline-none transition-all appearance-none cursor-pointer font-semibold shadow-inner"
-              >
-                {Object.keys(RED_TEAM_TEMPLATES).map(t => (
-                  <option key={t} value={t}>{t} Department</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-bold uppercase text-muted-foreground tracking-widest mb-3">Attack Vector</label>
-              <select
-                value={vector}
-                onChange={e => setVector(e.target.value)}
-                className="w-full px-5 py-4 bg-background border border-border rounded-xl text-foreground focus:ring-2 focus:ring-red-500/40 focus:border-red-500 outline-none transition-all appearance-none cursor-pointer font-semibold shadow-inner"
-              >
-                {getVectorsForTarget().map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
+              <div className="flex justify-between items-center mb-3">
+                <label className="block text-sm font-bold uppercase text-muted-foreground tracking-widest">Threat Severity</label>
+                <span className={`font-bold ${severity > 80 ? 'text-red-500' : severity > 40 ? 'text-orange-500' : 'text-green-500'}`}>
+                  {severity > 80 ? 'CRITICAL (Malicious)' : severity > 40 ? 'MEDIUM (Suspicious)' : 'LOW (Safe)'}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={severity}
+                onChange={(e) => setSeverity(Number(e.target.value))}
+                className="w-full h-3 bg-muted rounded-lg appearance-none cursor-pointer accent-red-500"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-2 font-semibold uppercase tracking-widest">
+                <span>Safe (Enron Ham)</span>
+                <span>Critical (Phishing)</span>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-border">
@@ -199,7 +139,7 @@ export default function RedTeam() {
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                   <>
                     <Cpu className="w-5 h-5" />
-                    Generate Payload
+                    Fetch Dataset Sample
                     <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" />
                   </>
                 )}

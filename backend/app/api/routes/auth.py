@@ -5,7 +5,6 @@ POST /auth/login     — Authenticate and receive a JWT
 GET  /auth/me        — Return current user profile
 """
 
-from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
@@ -30,40 +29,37 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
 @router.post(
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
 )
-@limiter.limit("5/hour")
-def register(request: UserRegisterRequest, fastapi_request: Request, db: Session = Depends(get_db)) -> UserResponse:
-    """Create a new user with hashed password. Fails if email already exists."""
-    existing = db.query(User).filter(User.email == request.email).first()
+def register(request: Request, register_data: UserRegisterRequest, db: Session = Depends(get_db)) -> UserResponse:
+    existing = db.query(User).filter(User.email == register_data.email).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"User with email '{request.email}' already exists.",
+            detail=f"User with email '{register_data.email}' already exists.",
         )
         
     org_id = None
-    if request.role == "soc" and request.organization_name:
+    if register_data.role == "soc" and register_data.organization_name:
         from app.database.models.models import Organization
-        org = db.query(Organization).filter(Organization.name == request.organization_name).first()
+        org = db.query(Organization).filter(Organization.name == register_data.organization_name).first()
         if org:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Organization already exists.")
-        org = Organization(name=request.organization_name)
+        org = Organization(name=register_data.organization_name)
         db.add(org)
         db.commit()
         db.refresh(org)
         org_id = org.id
 
     user = User(
-        name=request.name,
-        email=request.email,
-        hashed_password=hash_password(request.password),
-        role=UserRole(request.role),
+        name=register_data.name,
+        email=register_data.email,
+        hashed_password=hash_password(register_data.password),
+        role=UserRole(register_data.role),
         organization_id=org_id
     )
     db.add(user)
@@ -105,18 +101,15 @@ def invite_user(
     logger.info(f"User invited: {user.email} by {current_user.email}")
     return UserResponse.model_validate(user)
 
-
 @router.post(
     "/login",
     response_model=TokenResponse,
     summary="Authenticate and receive a JWT access token",
 )
-@limiter.limit("10/minute")
-def login(request: UserLoginRequest, fastapi_request: Request, db: Session = Depends(get_db)) -> TokenResponse:
-    """Validate credentials and issue a JWT access token."""
-    user = db.query(User).filter(User.email == request.email).first()
+def login(request: Request, login_data: UserLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    user = db.query(User).filter(User.email == login_data.email).first()
 
-    if not user or not verify_password(request.password, user.hashed_password):
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -137,14 +130,12 @@ def login(request: UserLoginRequest, fastapi_request: Request, db: Session = Dep
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
-
 @router.get(
     "/me",
     response_model=UserResponse,
     summary="Retrieve the current authenticated user's profile",
 )
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
-    """Return the authenticated user's profile data."""
     return UserResponse.model_validate(current_user)
 
 @router.get(

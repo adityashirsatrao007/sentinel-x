@@ -1,5 +1,6 @@
 from app.schemas.schemas import (
     UserRegisterRequest,
+    UserInviteRequest,
     UserLoginRequest,
     TokenResponse,
     UserResponse,
@@ -22,6 +23,7 @@ from app.schemas.schemas import (
 
 __all__ = [
     "UserRegisterRequest",
+    "UserInviteRequest",
     "UserLoginRequest",
     "TokenResponse",
     "UserResponse",

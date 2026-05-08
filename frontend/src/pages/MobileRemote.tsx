@@ -206,6 +206,32 @@ export default function MobileRemote() {
               </button>
             </div>
           </div>
+
+          <div className="bg-slate-900/50 border border-orange-500/20 rounded-3xl p-6">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-orange-500 mb-4 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4" /> Attack Simulator
+            </h2>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                onClick={() => triggerEvent('MOBILE_ATTACK', { 
+                  sender: '+1 (555) 019-2342', 
+                  message: 'URGENT: Your account has been suspended. Please verify your identity at http://sentinelx-verify.com/login to restore access.' 
+                })}
+                className="w-full py-4 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-xl font-bold uppercase tracking-widest text-xs border border-orange-500/20"
+              >
+                Simulate SMS Phishing
+              </button>
+              <button
+                onClick={() => triggerEvent('MOBILE_ATTACK', { 
+                  sender: 'WhatsApp Security', 
+                  message: 'Your verification code is 482-931. If you did not request this, click here: http://wa-security.net/auth' 
+                })}
+                className="w-full py-4 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-xl font-bold uppercase tracking-widest text-xs border border-orange-500/20"
+              >
+                Simulate WhatsApp Scam
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

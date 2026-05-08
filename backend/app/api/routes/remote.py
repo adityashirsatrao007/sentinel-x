@@ -15,10 +15,10 @@ class RemoteEvent(BaseModel):
 events_store: List[RemoteEvent] = []
 
 @router.post("/event", status_code=status.HTTP_201_CREATED)
-def push_event(request: dict):
+def push_event(event_data: dict):
     """Push an event from a mobile device or external trigger."""
-    event_type = request.get("type", "UNKNOWN")
-    payload = request.get("payload", {})
+    event_type = event_data.get("type", "UNKNOWN")
+    payload = event_data.get("payload", {})
     
     new_event = RemoteEvent(
         id=len(events_store) + 1,

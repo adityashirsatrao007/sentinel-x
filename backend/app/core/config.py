@@ -38,10 +38,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
     # ─── Risk Scoring Thresholds ──────────────────────────────────────────────
-    RISK_THRESHOLD_LOW: int = 30
-    RISK_THRESHOLD_MEDIUM: int = 60
-    RISK_THRESHOLD_HIGH: int = 85
-    ALERT_TRIGGER_THRESHOLD: int = 61  # Trigger alert if score >= this
+    RISK_THRESHOLD_LOW: float = 3.0
+    RISK_THRESHOLD_MEDIUM: float = 6.0
+    RISK_THRESHOLD_HIGH: float = 8.5
+    ALERT_TRIGGER_THRESHOLD: float = 6.1  # Trigger alert if score >= this
 
     # ─── Risk Scoring Weights ─────────────────────────────────────────────────
     WEIGHT_NLP: float = 0.35
@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # ─── External APIs (Optional) ─────────────────────────────────────────────
     VIRUSTOTAL_API_KEY: Optional[str] = None
     PHISHTANK_API_KEY: Optional[str] = None
+    HF_API_TOKEN: Optional[str] = None
 
     # ─── Google OAuth / Gmail ─────────────────────────────────────────────────
     GOOGLE_CLIENT_ID: Optional[str] = None

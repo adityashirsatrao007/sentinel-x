@@ -59,6 +59,18 @@ BEHAVIOR_PATTERNS: Dict[str, List[str]] = {
         r"\b(claim\s+(your\s+)?(prize|reward|gift|bonus))\b",
         r"\b(\$\d[\d,]+\s+(reward|cash|bonus|prize))\b",
     ],
+    "corporate_spoofing": [
+        r"\b(it\s+support|help\s*desk|system\s+administrator|network\s+security)\b",
+        r"\b(human\s+resources|hr\s+department|payroll\s+update|benefit\s+enrollment)\b",
+        r"\b(internal\s+memo|company\s+policy|mandatory\s+training|action\s+required)\b",
+        r"\b(microsoft\s+365\s+update|outlook\s+web\s+access|owa\s+login|vpn\s+credential)\b",
+    ],
+    "financial_coercion": [
+        r"\b(invoice\s+(overdue|pending|query)|payment\s+remittance|purchase\s+order)\b",
+        r"\b(wire\s+transfer|ach\s+payment|bank\s+transfer\s+request|swift\s+code)\b",
+        r"\b(fiscal\s+quarter|audit\s+report|tax\s+filing|accountant)\b",
+        r"\b(unpaid\s+balance|collection\s+agency|final\s+notice)\b",
+    ],
 }
 
 # Weight each category contributes to behavioral score
@@ -70,6 +82,8 @@ CATEGORY_WEIGHTS: Dict[str, float] = {
     "manipulation_tactics": 10.0,
     "fear_language": 10.0,
     "reward_luring": 5.0,
+    "corporate_spoofing": 25.0,
+    "financial_coercion": 20.0,
 }
 
 # Pre-compile all patterns
@@ -140,6 +154,8 @@ class BehaviorModel:
             "manipulation_tactics": "Psychological manipulation tactics detected",
             "fear_language": "Fear-inducing legal or account threat language detected",
             "reward_luring": "Reward luring / prize scam language detected",
+            "corporate_spoofing": "Internal corporate impersonation (IT/HR) detected",
+            "financial_coercion": "Financial coercion / fraudulent invoice language detected",
         }
         base = mapping.get(category, category.replace("_", " ").title())
         return f"{base} ({hits} indicator{'s' if hits > 1 else ''})"

@@ -48,6 +48,9 @@ def get_threats(
     return dashboard_service.get_recent_threats(db, current_user, skip=skip, limit=limit)
 
 
+from app.schemas.analytics import TargetAnalyticsResponse
+
+
 @router.get(
     "/trends",
     response_model=DashboardTrends,
@@ -59,3 +62,15 @@ def get_trends(
     current_user: User = Depends(get_current_user),
 ) -> DashboardTrends:
     return dashboard_service.get_trends(db, current_user, days=days)
+
+
+@router.get(
+    "/targets",
+    response_model=TargetAnalyticsResponse,
+    summary="Retrieve threat analytics by target department and role",
+)
+def get_targets(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TargetAnalyticsResponse:
+    return dashboard_service.get_target_analytics(db, current_user)

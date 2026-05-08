@@ -109,7 +109,7 @@ class Threat(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     type = Column(SAEnum(ThreatType), nullable=False, index=True)
-    channel = Column(String(50), nullable=False)  # email / sms / call / message
+    channel = Column(String(50), nullable=False, index=True)  # email / sms / call / message
     content = Column(Text, nullable=True)          # sanitized excerpt
     sender = Column(String(255), nullable=True)
     subject = Column(String(500), nullable=True)
@@ -128,15 +128,23 @@ class Threat(Base):
     # ─── Analysis Details ──────────────────────────
     reasons = Column(JSON, nullable=True)           # list[str]
     extracted_urls = Column(JSON, nullable=True)    # list[str]
-    classification_label = Column(String(100), nullable=True)
+    classification_label = Column(String(100), nullable=True, index=True)
+    target_department = Column(String(100), nullable=True, index=True)
+    target_role = Column(String(100), nullable=True, index=True)
 
     # ─── Metadata ─────────────────────────────────
-    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)
 
     # Relationships
     created_by_user = relationship("User", back_populates="threats")
     alert = relationship("Alert", back_populates="threat", uselist=False)
+
+    @property
+    def content_excerpt(self) -> str:
+        if not self.content:
+            return ""
+        return self.content[:200] + ("..." if len(self.content) > 200 else "")
 
     def __repr__(self) -> str:
         return f"<Threat id={self.id} type={self.type} level={self.threat_level} score={self.risk_score}>"

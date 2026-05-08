@@ -141,4 +141,28 @@ class AlertService:
         )
 
 
+    def acknowledge_all_alerts(self, user: User, db: Session) -> int:
+        """Mark all unacknowledged alerts as acknowledged for the user's scope."""
+        query = db.query(Alert).filter(Alert.acknowledged == False)
+        
+        if user.role != UserRole.sysadmin:
+            if user.role == UserRole.soc:
+                query = query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+            else:
+                query = query.join(Threat).filter(Threat.created_by == user.id)
+        
+        alerts = query.all()
+        count = 0
+        now = datetime.now(timezone.utc)
+        for alert in alerts:
+            alert.acknowledged = True
+            alert.acknowledged_by = user.id
+            alert.acknowledged_at = now
+            count += 1
+            
+        db.commit()
+        logger.info(f"Bulk acknowledge: {count} alerts acknowledged by user {user.id}")
+        return count
+
+
 alert_service = AlertService()

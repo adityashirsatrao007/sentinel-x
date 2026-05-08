@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.ml.llm_service import llm_service
 
 logger = get_logger(__name__)
 
@@ -95,8 +96,22 @@ class PhishingModel:
         """
         self._load()
 
+        # ─── Priority 1: LLM Inference (Qwen 2.5 via HF API) ──────────────────
+        if llm_service.enabled:
+            llm_result = llm_service.analyze_text(text)
+            if llm_result:
+                logger.info(f"LLM classification successful: {llm_result['label']}")
+                return (
+                    llm_result.get("label", "safe"),
+                    float(llm_result.get("risk_score", 0.0)),
+                    float(llm_result.get("confidence", 0.0)),
+                )
+
+        # ─── Priority 2: Local Transformers Model (DistilBERT) ────────────────
         if self._pipeline is not None:
             return self._classify_with_model(text)
+
+        # ─── Priority 3: Keyword Heuristics (Fallback) ────────────────────────
         return self._classify_with_heuristics(text)
 
     def _classify_with_model(self, text: str) -> Tuple[str, float, float]:

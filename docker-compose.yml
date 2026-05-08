@@ -1,24 +1,7 @@
 version: "3.9"
 
 services:
-  # ─── PostgreSQL Database ─────────────────────────────────────────────────────
-  postgres:
-    image: postgres:16-alpine
-    container_name: sentinelx_postgres
-    environment:
-      POSTGRES_USER: sentinelx
-      POSTGRES_PASSWORD: sentinelx_pass
-      POSTGRES_DB: sentinelx_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinelx -d sentinelx_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+
 
   # ─── Redis (Celery broker + result backend) ─────────────────────────────────
   redis:
@@ -45,15 +28,13 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://sentinelx:sentinelx_pass@postgres:5432/sentinelx_db
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
@@ -80,13 +61,11 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://sentinelx:sentinelx_pass@postgres:5432/sentinelx_db
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
@@ -117,7 +96,7 @@ services:
       - monitoring   # Start with: docker-compose --profile monitoring up
 
 volumes:
-  postgres_data:
+
   redis_data:
   ml_cache:
 

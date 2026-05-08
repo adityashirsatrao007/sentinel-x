@@ -88,6 +88,8 @@ class EmailService:
             reasons=risk_result.reasons,
             extracted_urls=extracted_urls,
             classification_label=nlp_label,
+            target_department=request.target_department,
+            target_role=request.target_role,
             created_by=user_id,
         )
         db.add(threat)

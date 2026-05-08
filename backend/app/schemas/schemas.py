@@ -69,6 +69,8 @@ class EmailAnalysisRequest(BaseModel):
     subject: str = Field(..., max_length=1000)
     body: str = Field(..., max_length=50_000)
     attachments: Optional[List[str]] = Field(default=None, description="Attachment filenames")
+    target_department: Optional[str] = Field(default=None, max_length=100)
+    target_role: Optional[str] = Field(default=None, max_length=100)
     async_processing: bool = Field(default=False, description="Process via Celery task queue")
 
 
@@ -79,6 +81,8 @@ class EmailAnalysisRequest(BaseModel):
 class SMSAnalysisRequest(BaseModel):
     sender: str = Field(..., max_length=50)
     message: str = Field(..., max_length=5000)
+    target_department: Optional[str] = Field(default=None, max_length=100)
+    target_role: Optional[str] = Field(default=None, max_length=100)
     async_processing: bool = False
 
 
@@ -105,7 +109,7 @@ class TranscriptionResponse(BaseModel):
 class ThreatAnalysisResponse(BaseModel):
     threat_id: Optional[uuid.UUID] = None
     threat_detected: bool
-    risk_score: float = Field(..., ge=0, le=100)
+    risk_score: float = Field(..., description="Overall risk score (1-10)")
     threat_level: str
     confidence: float = Field(..., ge=0, le=1)
     classification_label: str
@@ -115,6 +119,8 @@ class ThreatAnalysisResponse(BaseModel):
     behavior_score: float
     url_score: float
     reputation_score: float
+    target_department: Optional[str] = None
+    target_role: Optional[str] = None
     processing_mode: str = "sync"  # sync | async
     task_id: Optional[str] = None  # set when async_processing=True
 
@@ -132,6 +138,7 @@ class AlertResponse(BaseModel):
     acknowledged: bool
     acknowledged_at: Optional[datetime]
     created_at: datetime
+    threat: Optional[ThreatSummary] = None
 
     model_config = {"from_attributes": True}
 
@@ -169,6 +176,11 @@ class ThreatSummary(BaseModel):
     threat_level: str
     threat_detected: bool
     sender: Optional[str]
+    classification_label: Optional[str] = None
+    target_department: Optional[str] = None
+    target_role: Optional[str] = None
+    reasons: List[str] = []
+    content_excerpt: Optional[str] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

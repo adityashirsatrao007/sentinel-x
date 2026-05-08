@@ -62,3 +62,16 @@ def acknowledge_alert(
             detail=f"Alert {alert_id} not found.",
         )
     return result
+
+
+@router.post(
+    "/acknowledge-all",
+    summary="Acknowledge all pending alerts",
+)
+def acknowledge_all(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Marks all unacknowledged alerts as acknowledged for the current user's scope."""
+    count = alert_service.acknowledge_all_alerts(current_user, db)
+    return {"success": True, "acknowledged_count": count}

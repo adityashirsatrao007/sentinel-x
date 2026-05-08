@@ -1,6 +1,7 @@
 """
 Risk Scoring Engine
 Combines NLP, behavioral, URL, and reputation scores into a final risk score.
+Scaled to a 1–10 band as per user requirements.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ logger = get_logger(__name__)
 
 @dataclass
 class RiskScoreResult:
-    risk_score: float          # 0–100 composite score
+    risk_score: float          # 1–10 composite score
     threat_level: str          # LOW | MEDIUM | HIGH | CRITICAL
     threat_detected: bool
     confidence: float          # 0–1
@@ -31,19 +32,17 @@ class RiskScoreResult:
 
 class RiskEngine:
     """
-    Weighted risk scoring engine.
+    Weighted risk scoring engine (Scaled 1–10).
 
     Formula:
-        RiskScore = 0.35 * NLPScore
-                  + 0.25 * BehaviorScore
-                  + 0.20 * URLScore
-                  + 0.20 * ReputationScore
+        RawScore = 0.35 * NLP + 0.25 * Behavior + 0.20 * URL + 0.20 * Reputation
+        FinalScore = RawScore / 10
 
-    Threat Levels:
-        0–30   → LOW
-        31–60  → MEDIUM
-        61–85  → HIGH
-        86–100 → CRITICAL
+    Threat Levels (Scaled):
+        1.0–3.0   → LOW
+        3.1–6.0   → MEDIUM
+        6.1–8.5   → HIGH
+        8.6–10.0  → CRITICAL
     """
 
     def compute(
@@ -58,30 +57,18 @@ class RiskEngine:
         url_reasons: List[str],
     ) -> RiskScoreResult:
         """
-        Compute composite risk score and classify threat level.
-
-        Args:
-            nlp_score:        NLP classification score (0–100)
-            behavior_score:   Behavioral analysis score (0–100)
-            url_score:        URL threat heuristic score (0–100)
-            reputation_score: Sender/domain reputation score (0–100)
-            nlp_label:        Top classification label from NLP model
-            nlp_confidence:   Confidence of NLP classification (0–1)
-            behavior_reasons: List of behavioral threat reasons
-            url_reasons:      List of URL threat reasons
-
-        Returns:
-            RiskScoreResult with all fields populated
+        Compute composite risk score (1-10) and classify threat level.
         """
-        # Weighted composite score
-        risk_score = round(
+        # Weighted composite score (0-100 internally)
+        raw_score = (
             settings.WEIGHT_NLP * nlp_score
             + settings.WEIGHT_BEHAVIOR * behavior_score
             + settings.WEIGHT_URL * url_score
-            + settings.WEIGHT_REPUTATION * reputation_score,
-            2,
+            + settings.WEIGHT_REPUTATION * reputation_score
         )
-        risk_score = max(0.0, min(risk_score, 100.0))
+        
+        # Scale to 1–10 band
+        risk_score = round(max(1.0, min(raw_score / 10.0, 10.0)), 2)
 
         # Threat level classification
         threat_level = self._classify_level(risk_score)
@@ -98,13 +85,13 @@ class RiskEngine:
         # Merge reasons
         all_reasons: List[str] = []
         if nlp_label != "safe":
-            all_reasons.append(f"NLP classified as '{nlp_label}' (score: {nlp_score:.1f})")
+            all_reasons.append(f"NLP classified as '{nlp_label}' (score: {nlp_score/10:.1f}/10)")
         all_reasons.extend(behavior_reasons)
         all_reasons.extend(url_reasons)
 
-        # Human-readable explanation
+        # Human-readable explanation (scaled)
         explanation = self._generate_explanation(
-            risk_score, threat_level, nlp_label, behavior_score, url_score, reputation_score
+            risk_score, threat_level, nlp_label, behavior_score/10, url_score/10, reputation_score/10
         )
 
         return RiskScoreResult(
@@ -114,10 +101,10 @@ class RiskEngine:
             confidence=confidence,
             classification_label=nlp_label,
             reasons=all_reasons,
-            nlp_score=nlp_score,
-            behavior_score=behavior_score,
-            url_score=url_score,
-            reputation_score=reputation_score,
+            nlp_score=round(nlp_score/10, 2),
+            behavior_score=round(behavior_score/10, 2),
+            url_score=round(url_score/10, 2),
+            reputation_score=round(reputation_score/10, 2),
             explanation=explanation,
         )
 
@@ -142,53 +129,36 @@ class RiskEngine:
         reputation_score: float,
     ) -> str:
         parts = [
-            f"Overall risk score: {risk_score:.1f}/100 ({threat_level}).",
+            f"Overall risk level: {risk_score:.1f}/10 ({threat_level}).",
         ]
         if nlp_label != "safe":
             parts.append(f"NLP model identified content as '{nlp_label}'.")
-        if behavior_score > 30:
-            parts.append(f"Behavioral analysis detected social engineering indicators (score: {behavior_score:.1f}).")
-        if url_score > 20:
-            parts.append(f"Suspicious URL patterns found (score: {url_score:.1f}).")
-        if reputation_score > 40:
-            parts.append(f"Sender reputation is poor (score: {reputation_score:.1f}).")
+        if behavior_score > 3.0:
+            parts.append(f"Behavioral analysis detected social engineering indicators (level: {behavior_score:.1f}/10).")
+        if url_score > 2.0:
+            parts.append(f"Suspicious URL patterns found (level: {url_score:.1f}/10).")
+        if reputation_score > 4.0:
+            parts.append(f"Sender reputation is poor (level: {reputation_score:.1f}/10).")
         return " ".join(parts)
 
     def compute_reputation_score(self, sender: str, channel: str = "email") -> float:
         """
-        Simple heuristic reputation scorer for sender identity.
-
-        In production, integrate with threat intelligence feeds or
-        domain reputation APIs. Returns 0–100 (higher = more suspicious).
+        Returns 0-100 internally, will be scaled by compute()
         """
         import re
-
         score = 0.0
-
         if channel == "email":
-            # Disposable / free email domains
-            disposable = {
-                "tempmail.com", "guerrillamail.com", "mailinator.com",
-                "throwaway.email", "yopmail.com", "sharklasers.com",
-            }
+            disposable = {"tempmail.com", "guerrillamail.com", "mailinator.com", "throwaway.email", "yopmail.com", "sharklasers.com"}
             domain_match = re.search(r"@([\w.-]+)", sender)
             if domain_match:
                 domain = domain_match.group(1).lower()
-                if domain in disposable:
-                    score += 60.0
-                # Random-looking local part (many numbers or long random string)
+                if domain in disposable: score += 60.0
                 local = sender.split("@")[0]
                 digit_ratio = sum(c.isdigit() for c in local) / max(len(local), 1)
-                if digit_ratio > 0.5:
-                    score += 20.0
-                if len(local) > 20:
-                    score += 10.0
-
+                if digit_ratio > 0.5: score += 20.0
+                if len(local) > 20: score += 10.0
         elif channel == "sms":
-            # Short code or premium rate numbers
-            if re.match(r"^\+?[89]\d{9,}$", sender):
-                score += 30.0
-
+            if re.match(r"^\+?[89]\d{9,}$", sender): score += 30.0
         return round(min(score, 100.0), 2)
 
 

@@ -19,6 +19,7 @@ from app.schemas.schemas import (
     ThreatTrend,
     DashboardTrends,
 )
+from app.schemas.analytics import TargetAnalyticsResponse, TargetMetric
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -107,7 +108,6 @@ class DashboardService:
 
         t_query = self._filter_threat_query(db.query(Threat), user)
         
-        # Use SQLAlchemy's date truncation (PostgreSQL cast to date)
         rows = (
             t_query.with_entities(
                 func.cast(Threat.created_at, func.Date).label("date"),
@@ -133,6 +133,47 @@ class DashboardService:
             )
 
         return DashboardTrends(trends=trends, period_days=days)
+
+    def get_target_analytics(self, db: Session, user: User) -> TargetAnalyticsResponse:
+        """Analyze threats by target department and role."""
+        t_query = self._filter_threat_query(db.query(Threat), user)
+        
+        # Department stats
+        dept_rows = (
+            t_query.with_entities(
+                Threat.target_department,
+                func.count(Threat.id).label("count"),
+                func.avg(Threat.risk_score).label("avg_score")
+            )
+            .filter(Threat.target_department != None)
+            .group_by(Threat.target_department)
+            .order_by(desc("count"))
+            .all()
+        )
+        
+        # Role stats
+        role_rows = (
+            t_query.with_entities(
+                Threat.target_role,
+                func.count(Threat.id).label("count"),
+                func.avg(Threat.risk_score).label("avg_score")
+            )
+            .filter(Threat.target_role != None)
+            .group_by(Threat.target_role)
+            .order_by(desc("count"))
+            .all()
+        )
+        
+        return TargetAnalyticsResponse(
+            departments=[
+                TargetMetric(name=r.target_department, threat_count=r.count, avg_risk_score=round(float(r.avg_score), 2))
+                for r in dept_rows
+            ],
+            roles=[
+                TargetMetric(name=r.target_role, threat_count=r.count, avg_risk_score=round(float(r.avg_score), 2))
+                for r in role_rows
+            ]
+        )
 
 
 dashboard_service = DashboardService()

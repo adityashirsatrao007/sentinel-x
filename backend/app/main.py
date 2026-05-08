@@ -10,24 +10,22 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from slowapi._rate_limit_exceeded_handler import _rate_limit_exceeded_handler
 
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.core.logging import setup_logging, get_logger
 from app.database.base import Base
 from app.database.session import engine, warm_up_pool
-from app.api.routes import auth, analyze, alerts, dashboard, gmail, users
+from app.api.routes import auth, analyze, alerts, dashboard, gmail, users, remote
 from app.api.middleware.logging import RequestLoggingMiddleware
 
 # ─── Initialise logging first ─────────────────────────────────────────────────
 setup_logging()
 logger = get_logger(__name__)
-
-# ─── Rate Limiter ─────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
 
 
 # ─── Lifespan (startup / shutdown) ───────────────────────────────────────────
@@ -72,8 +70,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(
+    TrustedHostMiddleware, 
+    allowed_hosts=["localhost", "127.0.0.1", "0.0.0.0"]
+)
+
 # ─── Request Logging ──────────────────────────────────────────────────────────
 app.add_middleware(RequestLoggingMiddleware)
+
+# ─── Security Headers ─────────────────────────────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Content-Security-Policy (Permissive enough for development/docs but baseline security)
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; font-src 'self' fonts.gstatic.com; img-src 'self' data: https:;"
+    return response
 
 # ─── Global Exception Handler ─────────────────────────────────────────────────
 
@@ -93,6 +109,7 @@ app.include_router(alerts.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
 app.include_router(gmail.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
+app.include_router(remote.router, prefix="/api/v1")
 
 
 # ─── Health Check ─────────────────────────────────────────────────────────────

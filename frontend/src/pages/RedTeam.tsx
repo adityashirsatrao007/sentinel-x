@@ -66,6 +66,17 @@ export default function RedTeam() {
           subject: result.subject,
           force_risk_score: result.risk_score || 9.8 // Use precalculated dataset score
         });
+        
+        // Also trigger the Mobile PWA simulation
+        await api.post('/remote/event', {
+          type: 'MOBILE_ATTACK',
+          payload: {
+            sender: result.sender,
+            subject: result.subject,
+            body: result.body,
+          }
+        });
+        
         alert("Attack payload successfully launched to mobile dashboard!");
       } catch (err) {
         console.error(err);

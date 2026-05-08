@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -139,11 +139,28 @@ def gmail_callback(
         db.refresh(account)
         logger.info(f"Gmail account linked: {gmail_address} → user {user.email}")
 
-    return {
-        "success": True,
-        "message": f"Gmail account '{gmail_address}' connected successfully.",
-        "email_address": gmail_address,
-    }
+    return HTMLResponse(
+        content=f"""
+        <html>
+            <head>
+                <title>Gmail Connected</title>
+                <style>
+                    body {{ font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #121212; color: white; text-align: center; }}
+                    .card {{ background: #1e1e1e; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
+                    h1 {{ color: #4ade80; }}
+                    p {{ color: #a1a1aa; }}
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>Success!</h1>
+                    <p>Gmail account <b>{gmail_address}</b> has been connected to SentinelX.</p>
+                    <p>You can now safely close this window and return to the app.</p>
+                </div>
+            </body>
+        </html>
+        """
+    )
 
 
 @router.get(

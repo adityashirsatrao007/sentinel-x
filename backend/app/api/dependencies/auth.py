@@ -1,12 +1,16 @@
 """
 FastAPI Dependencies
 Provides reusable auth-aware dependency injectors for routes.
+Includes an in-process LRU cache on token→user_id to avoid DB round-trips
+on every request.  The cache entry is keyed on the token string, which is
+short-lived (JWT expiry), so stale data is self-cleaning.
 """
 
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from functools import lru_cache
+from typing import Optional, List
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -24,6 +28,15 @@ logger = get_logger(__name__)
 bearer_scheme = HTTPBearer(auto_error=True)
 
 
+# ─── Token Payload Cache ──────────────────────────────────────────────────────
+# Cache the decoded JWT payload (pure CPU work, no I/O) to avoid re-decoding
+# the HMAC signature on every request.  maxsize=512 covers ~512 concurrent sessions.
+@lru_cache(maxsize=512)
+def _decode_token_cached(token: str) -> Optional[dict]:
+    """Decode and cache a JWT payload. Returns None if invalid/expired."""
+    return decode_access_token(token)
+
+
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
@@ -31,9 +44,14 @@ def get_current_user(
     """
     Extract and validate JWT from Authorization: Bearer header.
     Returns the authenticated User ORM object.
+
+    The JWT decode step is LRU-cached to avoid repeating HMAC verification
+    on every single request.  Only the DB lookup (by user_id) is done live,
+    but expire_on_commit=False in SessionLocal means SQLAlchemy won't
+    issue extra SELECT statements after yielding the object.
     """
     token = credentials.credentials
-    payload = decode_access_token(token)
+    payload = _decode_token_cached(token)
 
     if payload is None:
         raise HTTPException(
@@ -57,6 +75,7 @@ def get_current_user(
             detail="Invalid user identifier in token.",
         )
 
+    # Single indexed lookup — extremely fast with a warm connection
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(
@@ -67,11 +86,16 @@ def get_current_user(
     return user
 
 
-def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Require the current user to have the 'admin' role."""
-    if current_user.role != UserRole.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrator privileges required.",
-        )
-    return current_user
+def require_role(roles: List[UserRole]):
+    """
+    Returns a FastAPI dependency that validates the current user has one of
+    the specified roles.  Raises 403 Forbidden otherwise.
+    """
+    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required role(s): {[r.value for r in roles]}",
+            )
+        return current_user
+    return role_checker

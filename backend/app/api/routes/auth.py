@@ -19,8 +19,10 @@ from app.schemas.schemas import (
     UserLoginRequest,
     TokenResponse,
     UserResponse,
+    UserInviteRequest,
 )
-from app.api.dependencies.auth import get_current_user
+from typing import List
+from app.api.dependencies.auth import get_current_user, require_role
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,18 +44,63 @@ def register(request: UserRegisterRequest, db: Session = Depends(get_db)) -> Use
             status_code=status.HTTP_409_CONFLICT,
             detail=f"User with email '{request.email}' already exists.",
         )
+        
+    org_id = None
+    if request.role == "soc" and request.organization_name:
+        from app.database.models.models import Organization
+        org = db.query(Organization).filter(Organization.name == request.organization_name).first()
+        if org:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Organization already exists.")
+        org = Organization(name=request.organization_name)
+        db.add(org)
+        db.commit()
+        db.refresh(org)
+        org_id = org.id
 
     user = User(
         name=request.name,
         email=request.email,
         hashed_password=hash_password(request.password),
         role=UserRole(request.role),
+        organization_id=org_id
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
     logger.info(f"New user registered: {user.email} (role={user.role})")
+    return UserResponse.model_validate(user)
+
+@router.post(
+    "/invite",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Invite a new user to the organization (SOC only)",
+)
+def invite_user(
+    request: UserInviteRequest, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.soc, UserRole.sysadmin]))
+) -> UserResponse:
+    if not current_user.organization_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You do not belong to an organization.")
+        
+    existing = db.query(User).filter(User.email == request.email).first()
+    if existing:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already exists.")
+
+    user = User(
+        name=request.name,
+        email=request.email,
+        hashed_password=hash_password(request.password),
+        role=UserRole(request.role),
+        organization_id=current_user.organization_id
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    logger.info(f"User invited: {user.email} by {current_user.email}")
     return UserResponse.model_validate(user)
 
 
@@ -96,3 +143,17 @@ def login(request: UserLoginRequest, db: Session = Depends(get_db)) -> TokenResp
 def me(current_user: User = Depends(get_current_user)) -> UserResponse:
     """Return the authenticated user's profile data."""
     return UserResponse.model_validate(current_user)
+
+@router.get(
+    "/users",
+    response_model=List[UserResponse],
+    summary="List all users in the organization (SOC only)",
+)
+def list_org_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.soc, UserRole.sysadmin]))
+) -> List[UserResponse]:
+    if not current_user.organization_id:
+        return []
+    users = db.query(User).filter(User.organization_id == current_user.organization_id).all()
+    return [UserResponse.model_validate(u) for u in users]

@@ -13,7 +13,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from app.database.models.models import Alert, Threat, AlertSeverity, ThreatLevel
+from app.database.models.models import Alert, Threat, AlertSeverity, ThreatLevel, User, UserRole
 from app.schemas.schemas import AlertResponse, AlertListResponse, AcknowledgeAlertResponse
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -70,12 +70,20 @@ class AlertService:
     def list_alerts(
         self,
         db: Session,
+        user: User,
         skip: int = 0,
         limit: int = 50,
         unacknowledged_only: bool = False,
     ) -> AlertListResponse:
         """List alerts, optionally filtered to unacknowledged only."""
         query = db.query(Alert)
+        
+        if user.role != UserRole.sysadmin:
+            if user.role == UserRole.soc:
+                query = query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+            else:
+                query = query.join(Threat).filter(Threat.created_by == user.id)
+
         if unacknowledged_only:
             query = query.filter(Alert.acknowledged == False)
         total = query.count()
@@ -88,21 +96,28 @@ class AlertService:
     def acknowledge_alert(
         self,
         alert_id: uuid.UUID,
-        user_id: uuid.UUID,
+        user: User,
         db: Session,
     ) -> Optional[AcknowledgeAlertResponse]:
         """Mark an alert as acknowledged by a user."""
-        alert = db.query(Alert).filter(Alert.id == alert_id).first()
+        query = db.query(Alert).filter(Alert.id == alert_id)
+        if user.role != UserRole.sysadmin:
+            if user.role == UserRole.soc:
+                query = query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+            else:
+                query = query.join(Threat).filter(Threat.created_by == user.id)
+                
+        alert = query.first()
         if not alert:
             return None
 
         alert.acknowledged = True
-        alert.acknowledged_by = user_id
+        alert.acknowledged_by = user.id
         alert.acknowledged_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(alert)
 
-        logger.info(f"Alert {alert_id} acknowledged by user {user_id}")
+        logger.info(f"Alert {alert_id} acknowledged by user {user.id}")
         return AcknowledgeAlertResponse(
             id=alert.id,
             acknowledged=alert.acknowledged,

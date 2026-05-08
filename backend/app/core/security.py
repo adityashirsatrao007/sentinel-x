@@ -12,11 +12,18 @@ from passlib.context import CryptContext
 from app.core.config import settings
 
 # ─── Password Hashing ─────────────────────────────────────────────────────────
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# rounds=10 → ~100ms per hash (still very secure, OWASP recommends ≥10).
+# Default passlib rounds=12 → ~400ms, which on a cloud-latency path compounds
+# to multiple seconds.  10 rounds provides 2^10 = 1024 iterations.
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=10,
+)
 
 
 def hash_password(plain_password: str) -> str:
-    """Hash a plain-text password using bcrypt."""
+    """Hash a plain-text password using bcrypt (10 rounds)."""
     return pwd_context.hash(plain_password)
 
 

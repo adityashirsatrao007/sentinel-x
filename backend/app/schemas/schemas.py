@@ -20,7 +20,14 @@ class UserRegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
-    role: str = Field(default="operator", pattern="^(admin|operator)$")
+    role: str = Field(default="user", pattern="^(sysadmin|soc|operator|user)$")
+    organization_name: Optional[str] = Field(default=None, description="Provide when registering as a new SOC to create an org")
+
+class UserInviteRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=128)
+    role: str = Field(default="user", pattern="^(operator|user)$")
 
 
 class UserLoginRequest(BaseModel):
@@ -36,10 +43,18 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     id: uuid.UUID
+    organization_id: Optional[uuid.UUID]
     name: str
     email: EmailStr
     role: str
     is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class OrganizationResponse(BaseModel):
+    id: uuid.UUID
+    name: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -48,3 +48,6 @@ ffmpeg-python==0.2.0             # Required by Whisper for audio decoding
 # ─── Utilities ────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 structlog==24.4.0
+google-auth
+google-auth-oauthlib
+google-api-python-client

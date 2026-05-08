@@ -18,8 +18,8 @@ from slowapi.util import get_remote_address
 from app.core.config import settings
 from app.core.logging import setup_logging, get_logger
 from app.database.base import Base
-from app.database.session import engine
-from app.api.routes import auth, analyze, alerts, dashboard
+from app.database.session import engine, warm_up_pool
+from app.api.routes import auth, analyze, alerts, dashboard, gmail, users
 from app.api.middleware.logging import RequestLoggingMiddleware
 
 # ─── Initialise logging first ─────────────────────────────────────────────────
@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables verified / created.")
+    warm_up_pool()   # Pre-establish connections so the first request isn't slow
     yield
     logger.info(f"Shutting down {settings.APP_NAME}")
 
@@ -90,6 +91,8 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(analyze.router, prefix="/api/v1")
 app.include_router(alerts.router, prefix="/api/v1")
 app.include_router(dashboard.router, prefix="/api/v1")
+app.include_router(gmail.router, prefix="/api/v1")
+app.include_router(users.router, prefix="/api/v1")
 
 
 # ─── Health Check ─────────────────────────────────────────────────────────────

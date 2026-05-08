@@ -31,17 +31,7 @@ def get_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DashboardStats:
-    """
-    Returns:
-        - total_threats
-        - phishing_attempts
-        - high_risk_alerts
-        - critical_alerts
-        - threats_today
-        - avg_risk_score
-        - unacknowledged_alerts
-    """
-    return dashboard_service.get_stats(db)
+    return dashboard_service.get_stats(db, current_user)
 
 
 @router.get(
@@ -55,8 +45,7 @@ def get_threats(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ThreatListResponse:
-    """Return recent threat records ordered by creation time (newest first)."""
-    return dashboard_service.get_recent_threats(db, skip=skip, limit=limit)
+    return dashboard_service.get_recent_threats(db, current_user, skip=skip, limit=limit)
 
 
 @router.get(
@@ -69,8 +58,4 @@ def get_trends(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DashboardTrends:
-    """
-    Returns daily threat counts and average risk scores grouped by channel
-    for the specified number of past days.
-    """
-    return dashboard_service.get_trends(db, days=days)
+    return dashboard_service.get_trends(db, current_user, days=days)

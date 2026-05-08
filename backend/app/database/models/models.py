@@ -35,8 +35,10 @@ import enum
 
 
 class UserRole(str, enum.Enum):
-    admin = "admin"
+    sysadmin = "sysadmin"
+    soc = "soc"
     operator = "operator"
+    user = "user"
 
 
 class ThreatType(str, enum.Enum):
@@ -60,23 +62,41 @@ class AlertSeverity(str, enum.Enum):
     critical = "critical"
 
 
+# ─── Organization ─────────────────────────────────────────────────────────────
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    
+    users = relationship("User", back_populates="organization", lazy="dynamic")
+
+    def __repr__(self) -> str:
+        return f"<Organization id={self.id} name={self.name}>"
+
 # ─── User ─────────────────────────────────────────────────────────────────────
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=True)
     name = Column(String(255), nullable=False)
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    role = Column(SAEnum(UserRole), default=UserRole.operator, nullable=False)
+    role = Column(SAEnum(UserRole), default=UserRole.user, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
+    organization = relationship("Organization", back_populates="users")
     threats = relationship("Threat", back_populates="created_by_user", lazy="dynamic")
     audit_logs = relationship("AuditLog", back_populates="user", lazy="dynamic")
+    email_accounts = relationship("EmailAccount", back_populates="user", lazy="dynamic")
+    devices = relationship("Device", back_populates="user", lazy="dynamic")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email} role={self.role}>"
@@ -164,3 +184,47 @@ class AuditLog(Base):
 
     def __repr__(self) -> str:
         return f"<AuditLog id={self.id} action={self.action} user_id={self.user_id}>"
+
+
+# ─── Email Account (Gmail OAuth) ──────────────────────────────────────────────
+
+class EmailAccount(Base):
+    __tablename__ = "email_accounts"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    provider = Column(String(50), nullable=False, default="gmail")
+    email_address = Column(String(255), nullable=False, index=True)
+    access_token = Column(Text, nullable=True)
+    refresh_token = Column(Text, nullable=True)
+    token_expiry = Column(DateTime(timezone=True), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_synced_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="email_accounts")
+
+    def __repr__(self) -> str:
+        return f"<EmailAccount id={self.id} email={self.email_address} provider={self.provider}>"
+
+
+# ─── Device ───────────────────────────────────────────────────────────────────
+
+class Device(Base):
+    __tablename__ = "devices"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    device_name = Column(String(255), nullable=False)
+    device_token = Column(String(512), nullable=True, unique=True)  # Push notification token
+    platform = Column(String(50), nullable=False)   # ios / android / web
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="devices")
+
+    def __repr__(self) -> str:
+        return f"<Device id={self.id} name={self.device_name} platform={self.platform}>"

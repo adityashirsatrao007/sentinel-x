@@ -11,7 +11,7 @@ from typing import List
 from sqlalchemy import func, desc
 from sqlalchemy.orm import Session
 
-from app.database.models.models import Alert, Threat, ThreatLevel, AlertSeverity
+from app.database.models.models import Alert, Threat, ThreatLevel, AlertSeverity, User, UserRole
 from app.schemas.schemas import (
     DashboardStats,
     ThreatSummary,
@@ -27,36 +27,47 @@ logger = get_logger(__name__)
 class DashboardService:
     """Aggregation queries for dashboard analytics endpoints."""
 
-    def get_stats(self, db: Session) -> DashboardStats:
+    def _filter_threat_query(self, query, user: User):
+        if user.role == UserRole.sysadmin:
+            return query
+        if user.role == UserRole.soc:
+            return query.join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+        return query.filter(Threat.created_by == user.id)
+
+    def _filter_alert_query(self, query, user: User):
+        if user.role == UserRole.sysadmin:
+            return query
+        if user.role == UserRole.soc:
+            return query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+        return query.join(Threat).filter(Threat.created_by == user.id)
+
+    def get_stats(self, db: Session, user: User) -> DashboardStats:
         """Return high-level KPI statistics."""
         today_start = datetime.now(timezone.utc).replace(
             hour=0, minute=0, second=0, microsecond=0
         )
 
-        total_threats = db.query(Threat).count()
+        t_query = self._filter_threat_query(db.query(Threat), user)
+        a_query = self._filter_alert_query(db.query(Alert), user)
+
+        total_threats = t_query.count()
         phishing_attempts = (
-            db.query(Threat)
-            .filter(Threat.classification_label.in_(["phishing", "credential_theft"]))
-            .count()
+            t_query.filter(Threat.classification_label.in_(["phishing", "credential_theft"])).count()
         )
         high_risk_alerts = (
-            db.query(Alert)
-            .filter(Alert.severity.in_([AlertSeverity.high, AlertSeverity.critical]))
-            .count()
+            a_query.filter(Alert.severity.in_([AlertSeverity.high, AlertSeverity.critical])).count()
         )
         critical_alerts = (
-            db.query(Alert)
-            .filter(Alert.severity == AlertSeverity.critical)
-            .count()
+            a_query.filter(Alert.severity == AlertSeverity.critical).count()
         )
         threats_today = (
-            db.query(Threat).filter(Threat.created_at >= today_start).count()
+            t_query.filter(Threat.created_at >= today_start).count()
         )
         avg_risk = (
-            db.query(func.avg(Threat.risk_score)).scalar() or 0.0
+            t_query.with_entities(func.avg(Threat.risk_score)).scalar() or 0.0
         )
         unacknowledged = (
-            db.query(Alert).filter(Alert.acknowledged == False).count()
+            a_query.filter(Alert.acknowledged == False).count()
         )
 
         return DashboardStats(
@@ -70,12 +81,13 @@ class DashboardService:
         )
 
     def get_recent_threats(
-        self, db: Session, skip: int = 0, limit: int = 50
+        self, db: Session, user: User, skip: int = 0, limit: int = 50
     ) -> ThreatListResponse:
         """Return paginated recent threats."""
-        total = db.query(Threat).count()
+        t_query = self._filter_threat_query(db.query(Threat), user)
+        total = t_query.count()
         threats = (
-            db.query(Threat)
+            t_query
             .order_by(desc(Threat.created_at))
             .offset(skip)
             .limit(limit)
@@ -86,16 +98,18 @@ class DashboardService:
             threats=[ThreatSummary.model_validate(t) for t in threats],
         )
 
-    def get_trends(self, db: Session, days: int = 7) -> DashboardTrends:
+    def get_trends(self, db: Session, user: User, days: int = 7) -> DashboardTrends:
         """
         Return daily threat counts and average risk scores per channel
         over the past N days.
         """
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
+        t_query = self._filter_threat_query(db.query(Threat), user)
+        
         # Use SQLAlchemy's date truncation (PostgreSQL cast to date)
         rows = (
-            db.query(
+            t_query.with_entities(
                 func.cast(Threat.created_at, func.Date).label("date"),
                 Threat.channel,
                 func.count(Threat.id).label("count"),

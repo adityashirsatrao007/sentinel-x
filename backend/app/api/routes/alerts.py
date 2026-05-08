@@ -40,7 +40,7 @@ def list_alerts(
     Optionally filter to show only unacknowledged alerts.
     """
     return alert_service.list_alerts(
-        db, skip=skip, limit=limit, unacknowledged_only=unacknowledged_only
+        db, current_user, skip=skip, limit=limit, unacknowledged_only=unacknowledged_only
     )
 
 
@@ -55,7 +55,7 @@ def acknowledge_alert(
     current_user: User = Depends(get_current_user),
 ) -> AcknowledgeAlertResponse:
     """Mark an alert as acknowledged. Records which operator acknowledged it."""
-    result = alert_service.acknowledge_alert(alert_id, current_user.id, db)
+    result = alert_service.acknowledge_alert(alert_id, current_user, db)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -59,6 +59,20 @@ class Settings(BaseSettings):
     VIRUSTOTAL_API_KEY: Optional[str] = None
     PHISHTANK_API_KEY: Optional[str] = None
 
+    # ─── Google OAuth / Gmail ─────────────────────────────────────────────────
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/gmail/callback"
+    GOOGLE_SCOPES: List[str] = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "openid",
+        "email",
+        "profile",
+    ]
+
+    # ─── Polling ──────────────────────────────────────────────────────────────
+    GMAIL_POLL_INTERVAL_SECONDS: int = 60  # How often Celery polls Gmail
+
     # ─── Rate Limiting ────────────────────────────────────────────────────────
     RATE_LIMIT_REQUESTS: int = 100
     RATE_LIMIT_WINDOW: int = 60  # seconds

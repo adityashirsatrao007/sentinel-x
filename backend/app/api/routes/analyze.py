@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from app.database.session import get_db
 from app.database.models.models import User, Threat
 from app.api.dependencies.auth import get_current_user
+from app.core.limiter import limiter
+from fastapi import Request
 from app.services.email_service import email_service
 from app.services.sms_service import sms_service
 from app.services.call_service import call_service
@@ -38,8 +40,10 @@ router = APIRouter(tags=["Threat Analysis"])
     response_model=ThreatAnalysisResponse,
     summary="Analyze an email for phishing and social engineering threats",
 )
+@limiter.limit("20/minute")
 def analyze_email(
     request: EmailAnalysisRequest,
+    fastapi_request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -93,8 +97,10 @@ def analyze_email(
     response_model=ThreatAnalysisResponse,
     summary="Analyze an SMS message for scam and phishing threats",
 )
+@limiter.limit("20/minute")
 def analyze_sms(
     request: SMSAnalysisRequest,
+    fastapi_request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -77,21 +77,21 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setRole('user')}
-                    className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all ${role === 'user' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold uppercase tracking-widest border transition-all ${role === 'user' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
                   >
                     Operator
                   </button>
                   <button
                     type="button"
                     onClick={() => setRole('soc')}
-                    className={`flex-1 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest border transition-all ${role === 'soc' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-bold uppercase tracking-widest border transition-all ${role === 'soc' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-muted'}`}
                   >
                     SOC Admin
                   </button>
                 </div>
                 {role === 'soc' && (
                   <div>
-                    <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Organization</label>
+                    <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Organization</label>
                     <div className="mt-1">
                       <input
                         type="text"
@@ -105,7 +105,7 @@ export default function Login() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                  <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
                   <div className="mt-1">
                     <input
                       type="text"
@@ -120,7 +120,7 @@ export default function Login() {
               </>
             )}
             <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Email address</label>
+              <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Email address</label>
               <div className="mt-1">
                 <input
                   type="email"
@@ -134,7 +134,7 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Password</label>
+              <label className="block text-sm font-bold text-muted-foreground uppercase tracking-widest mb-1.5 ml-1">Password</label>
               <div className="mt-1">
                 <input
                   type="password"
@@ -148,7 +148,7 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="text-red-500 text-[11px] font-bold uppercase tracking-widest bg-red-500/10 p-4 rounded-xl border border-red-500/20 italic">
+              <div className="text-red-500 text-sm font-bold uppercase tracking-widest bg-red-500/10 p-4 rounded-xl border border-red-500/20 italic">
                 {error}
               </div>
             )}
@@ -157,7 +157,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-xs font-bold uppercase tracking-widest text-white bg-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-50"
+                className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold uppercase tracking-widest text-white bg-primary hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all disabled:opacity-50"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? 'Establish Session' : 'Register Operator')}
               </button>
@@ -167,7 +167,7 @@ export default function Login() {
           <div className="mt-8 text-center">
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-[11px] font-bold uppercase tracking-widest text-primary hover:text-blue-500 transition-colors"
+              className="text-sm font-bold uppercase tracking-widest text-primary hover:text-blue-500 transition-colors"
             >
               {isLogin ? "No account? Register unit" : "Existing operative? Login"}
             </button>

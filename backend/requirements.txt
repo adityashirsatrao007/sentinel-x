@@ -8,7 +8,9 @@ python-multipart==0.0.9          # File upload support
 
 # ─── Database ─────────────────────────────────────────────────────────────────
 sqlalchemy==2.0.35
-# psycopg2-binary is replaced by psycopg (v3) in this environment
+# psycopg2-binary is the compiled PostgreSQL adapter — required for Render/cloud deployments
+psycopg2-binary>=2.9.9
+# psycopg v3 as an alternative driver
 psycopg[binary]>=3.1.0
 alembic==1.13.2
 

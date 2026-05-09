@@ -33,7 +33,13 @@ class UserService:
             query = query.filter(User.organization_id == requesting_user.organization_id)
 
         users = query.order_by(User.created_at.desc()).offset(skip).limit(limit).all()
-        return [UserResponse.model_validate(u) for u in users]
+        result = []
+        for u in users:
+            try:
+                result.append(UserResponse.model_validate(u))
+            except Exception as e:
+                logger.warning(f"Skipping user {u.email} due to invalid data: {e}")
+        return result
 
     def get_user_by_id(
         self, db: Session, user_id: uuid.UUID, requesting_user: User

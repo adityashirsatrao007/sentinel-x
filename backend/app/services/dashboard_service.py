@@ -110,14 +110,14 @@ class DashboardService:
         
         rows = (
             t_query.with_entities(
-                func.cast(Threat.created_at, func.Date).label("date"),
+                func.date(Threat.created_at).label("date"),
                 Threat.channel,
                 func.count(Threat.id).label("count"),
                 func.avg(Threat.risk_score).label("avg_score"),
             )
             .filter(Threat.created_at >= since)
-            .group_by("date", Threat.channel)
-            .order_by("date")
+            .group_by(func.date(Threat.created_at), Threat.channel)
+            .order_by(func.date(Threat.created_at))
             .all()
         )
 

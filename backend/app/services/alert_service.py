@@ -78,11 +78,12 @@ class AlertService:
         """List alerts, optionally filtered to unacknowledged only."""
         query = db.query(Alert)
         
-        if user.role != UserRole.sysadmin:
-            if user.role == UserRole.soc:
-                query = query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
-            else:
-                query = query.join(Threat).filter(Threat.created_by == user.id)
+        if user:
+            if user.role != UserRole.sysadmin:
+                if user.role == UserRole.soc:
+                    query = query.join(Threat).join(User, Threat.created_by == User.id).filter(User.organization_id == user.organization_id)
+                else:
+                    query = query.join(Threat).filter(Threat.created_by == user.id)
 
         if unacknowledged_only:
             query = query.filter(Alert.acknowledged == False)

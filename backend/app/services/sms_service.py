@@ -69,6 +69,13 @@ class SMSService:
             behavior_reasons=all_behavior_reasons,
             url_reasons=url_reasons,
         )
+        
+        # Override for manual demo attacks
+        if getattr(request, 'force_risk_score', None) is not None:
+            risk_result.risk_score = request.force_risk_score
+            risk_result.threat_detected = True
+            risk_result.threat_level = "CRITICAL" if request.force_risk_score >= 8.5 else ("HIGH" if request.force_risk_score >= 6.1 else "MEDIUM")
+            risk_result.classification_label = "MANUAL_ATTACK"
 
         # ── Step 6: Persist Threat ────────────────────────────────────────
         threat = Threat(

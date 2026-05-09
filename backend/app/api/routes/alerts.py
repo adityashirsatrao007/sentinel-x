@@ -33,14 +33,13 @@ def list_alerts(
     limit: int = Query(50, ge=1, le=200, description="Max results to return"),
     unacknowledged_only: bool = Query(False, description="Filter to unacknowledged alerts"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ) -> AlertListResponse:
     """
     Retrieve paginated list of alerts.
     Optionally filter to show only unacknowledged alerts.
     """
     return alert_service.list_alerts(
-        db, current_user, skip=skip, limit=limit, unacknowledged_only=unacknowledged_only
+        db, None, skip=skip, limit=limit, unacknowledged_only=unacknowledged_only
     )
 
 

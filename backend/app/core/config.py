@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     RISK_THRESHOLD_LOW: float = 3.0
     RISK_THRESHOLD_MEDIUM: float = 6.0
     RISK_THRESHOLD_HIGH: float = 8.5
-    ALERT_TRIGGER_THRESHOLD: float = 6.1  # Trigger alert if score >= this
+    ALERT_TRIGGER_THRESHOLD: float = 3.1  # Trigger alert if score >= this (flags MEDIUM+)
 
     # ─── Risk Scoring Weights ─────────────────────────────────────────────────
     WEIGHT_NLP: float = 0.35

@@ -5,6 +5,7 @@ FastAPI Application Entry Point
 
 from __future__ import annotations
 
+import threading
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -28,6 +29,33 @@ setup_logging()
 logger = get_logger(__name__)
 
 
+# ─── In-Process Gmail Polling Scheduler ──────────────────────────────────────
+
+_scheduler = None
+
+def _start_gmail_scheduler() -> None:
+    """Start APScheduler for periodic Gmail polling (no Redis needed)."""
+    global _scheduler
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from app.services.polling_service import polling_service
+
+        _scheduler = BackgroundScheduler(daemon=True)
+        interval = getattr(settings, 'GMAIL_POLL_INTERVAL_SECONDS', 60)
+        _scheduler.add_job(
+            polling_service.poll_all_accounts,
+            'interval',
+            seconds=int(interval),
+            id='gmail_poll',
+            replace_existing=True,
+            max_instances=1,
+        )
+        _scheduler.start()
+        logger.info(f"Gmail polling scheduler started (every {interval}s, no Redis needed).")
+    except Exception as exc:
+        logger.warning(f"Could not start Gmail scheduler: {exc}. Gmail polling disabled.")
+
+
 # ─── Lifespan (startup / shutdown) ───────────────────────────────────────────
 
 @asynccontextmanager
@@ -37,7 +65,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables verified / created.")
     warm_up_pool()   # Pre-establish connections so the first request isn't slow
+    _start_gmail_scheduler()
     yield
+    if _scheduler:
+        _scheduler.shutdown(wait=False)
     logger.info(f"Shutting down {settings.APP_NAME}")
 
 

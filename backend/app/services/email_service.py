@@ -14,6 +14,7 @@ from app.ml.phishing_model import phishing_model
 from app.ml.behavior_model import behavior_model
 from app.ml.url_detector import url_detector
 from app.ml.risk_engine import risk_engine
+from app.ml.llm_service import llm_service
 from app.database.models.models import Threat, ThreatType, ThreatLevel
 from app.schemas.schemas import EmailAnalysisRequest, ThreatAnalysisResponse
 from app.core.logging import get_logger
@@ -69,6 +70,19 @@ class EmailService:
             behavior_reasons=behavior_result.reasons,
             url_reasons=url_reasons,
         )
+
+        # ── Step 5b: LLM Deep Analysis (non-blocking) ────────────────
+        try:
+            llm_result = llm_service.analyze_threat(
+                text=full_text,
+                channel="email",
+                sender=request.sender,
+            )
+            if llm_result and llm_result.get("assessment"):
+                risk_result.reasons.append(f"AI Assessment: {llm_result['assessment']}")
+                logger.info(f"LLM analysis added for email from {request.sender}")
+        except Exception as llm_exc:
+            logger.warning(f"LLM analysis skipped: {llm_exc}")
 
         # Override for Red Team manual demo attacks
         if getattr(request, 'force_risk_score', None) is not None:
